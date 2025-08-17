@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(bodyParser.json());
 
-let pets = [];   // histórico em memória (só últimos 4 minutos)
+let pets = [];    // histórico em memória (últimos 5 min)
 let clients = []; // UIs conectadas
 
 // ========= BOT DISCORD =========
@@ -74,10 +74,19 @@ client.on("messageCreate", (msg) => {
       time: Date.now(),
     };
 
-    // Sempre adiciona ao histórico
-    pets.push(pet);
+    // Evitar pets duplicados: se já existir mesmo pet no mesmo jobId, somar count e atualizar valor se maior
+    const existingIndex = pets.findIndex(
+      (p) => p.jobId === pet.jobId && p.petName === pet.petName
+    );
+    if (existingIndex !== -1) {
+      pets[existingIndex].count += pet.count;
+      pets[existingIndex].value = Math.max(pets[existingIndex].value, pet.value);
+      pets[existingIndex].time = pet.time;
+    } else {
+      pets.push(pet);
+    }
 
-    // Envia instantaneamente para UIs conectadas
+    // envia para todas as UIs conectadas
     clients.forEach((ws) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "new_pet", pet }));
@@ -93,13 +102,13 @@ client.login(DISCORD_TOKEN);
 // ========= LIMPEZA AUTOMÁTICA =========
 setInterval(() => {
   const now = Date.now();
-  pets = pets.filter((p) => now - p.time < 310000); // últimos 5min
+  pets = pets.filter((p) => now - p.time < 300000); // últimos 5 minutos
 }, 60000);
 
 // ========= API HTTP =========
 app.get("/pets", (req, res) => {
   const now = Date.now();
-  const recentPets = pets.filter((p) => now - p.time < 310000);
+  const recentPets = pets.filter((p) => now - p.time < 300000);
   res.json(recentPets);
 });
 
@@ -111,9 +120,9 @@ wss.on("connection", (ws) => {
   console.log("UI conectada!");
   clients.push(ws);
 
-  // Envia pets já existentes imediatamente
+  // envia pets atuais
   const now = Date.now();
-  pets.filter((p) => now - p.time < 310000).forEach((p) => {
+  pets.filter((p) => now - p.time < 300000).forEach((p) => {
     ws.send(JSON.stringify({ type: "new_pet", pet: p }));
   });
 
