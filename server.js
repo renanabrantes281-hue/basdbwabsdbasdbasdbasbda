@@ -102,13 +102,13 @@ client.login(DISCORD_TOKEN);
 // ========= LIMPEZA AUTOMÁTICA =========
 setInterval(() => {
   const now = Date.now();
-  pets = pets.filter((p) => now - p.time < 300000); // últimos 5 minutos
+  pets = pets.filter((p) => now - p.time < 1800000); // últimos 5 minutos
 }, 60000);
 
 // ========= API HTTP =========
 app.get("/pets", (req, res) => {
   const now = Date.now();
-  const recentPets = pets.filter((p) => now - p.time < 300000);
+  const recentPets = pets.filter((p) => now - p.time < 1800000);
   res.json(recentPets);
 });
 
@@ -122,7 +122,7 @@ wss.on("connection", (ws) => {
 
   // envia pets atuais
   const now = Date.now();
-  pets.filter((p) => now - p.time < 300000).forEach((p) => {
+  pets.filter((p) => now - p.time < 1800000).forEach((p) => {
     ws.send(JSON.stringify({ type: "new_pet", pet: p }));
   });
 
@@ -134,3 +134,4 @@ wss.on("connection", (ws) => {
 server.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
 });
+
